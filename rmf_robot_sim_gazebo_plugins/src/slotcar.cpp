@@ -30,12 +30,12 @@ private:
 
   std::array<gazebo::physics::JointPtr, 2> joints;
 
-  std::unordered_set<gazebo::physics::Model*> obstacle_exclusions;
+  std::unordered_set<gazebo::physics::Model*> infrastructure;
 
   // Book keeping
   double last_update_time = 0.0;
 
-  void init_obstacle_exclusions();
+  void init_infrastructure();
 
   std::vector<Eigen::Vector3d> get_obstacle_positions(
     const gazebo::physics::WorldPtr& world);
@@ -93,20 +93,24 @@ void SlotcarPlugin::Load(gazebo::physics::ModelPtr model, sdf::ElementPtr sdf)
   _update_connection = gazebo::event::Events::ConnectWorldUpdateBegin(
     std::bind(&SlotcarPlugin::OnUpdate, this));
 
-  joints[0] = _model->GetJoint("joint_tire_left");
+
+  std::string left_tire_name = model->GetName() +"/"+ "joint_tire_left";
+  std::string right_tire_name =model->GetName() +"/"+ "joint_tire_right";
+
+  joints[0] = _model->GetJoint(left_tire_name);
   if (!joints[0])
   {
     RCLCPP_ERROR(
       dataPtr->logger(),
-      "Could not find tire for [joint_tire_left]");
+      "Could not find tire for [%s]", left_tire_name.c_str());
   }
 
-  joints[1] = _model->GetJoint("joint_tire_right");
+  joints[1] = _model->GetJoint(right_tire_name);
   if (!joints[1])
   {
     RCLCPP_ERROR(
       dataPtr->logger(),
-      "Could not find tire for [joint_tire_right]");
+      "Could not find tire for [%s]", right_tire_name.c_str());
   }
 }
 
@@ -115,14 +119,14 @@ void SlotcarPlugin::charge_state_cb(ConstSelectionPtr& msg)
   dataPtr->charge_state_cb(msg->name(), msg->selected());
 }
 
-void SlotcarPlugin::init_obstacle_exclusions()
+void SlotcarPlugin::init_infrastructure()
 {
   const auto& world = _model->GetWorld();
-  obstacle_exclusions.insert(_model.get());
+  infrastructure.insert(_model.get());
   const auto& all_models = world->Models();
   for (const auto& m : all_models)
   {
-    // Object should not be static, be part of infrastructure, or dispensable
+    // Object should not be static and part of infrastructure
     if (!m->IsStatic())
     {
       std::string name = m->GetName();
@@ -131,9 +135,8 @@ void SlotcarPlugin::init_obstacle_exclusions()
           c = ::tolower(c);
         });
       if (name.find("door") != std::string::npos ||
-        name.find("lift") != std::string::npos ||
-        name.find("dispensable") != std::string::npos)
-        obstacle_exclusions.insert(m.get());
+        name.find("lift") != std::string::npos)
+        infrastructure.insert(m.get());
     }
   }
 }
@@ -145,11 +148,11 @@ std::vector<Eigen::Vector3d> SlotcarPlugin::get_obstacle_positions(
 
   for (const auto& m : world->Models())
   {
-    // Object should not be static, not part of obstacle_exclusions,
+    // Object should not be static, not part of infrastructure
     // and close than a threshold (checked by common function)
     const auto p_obstacle = m->WorldPose().Pos();
     if (m->IsStatic() == false &&
-      obstacle_exclusions.find(m.get()) == obstacle_exclusions.end())
+      infrastructure.find(m.get()) == infrastructure.end())
       obstacle_positions.push_back(rmf_plugins_utils::convert_vec(p_obstacle));
   }
 
@@ -159,11 +162,8 @@ std::vector<Eigen::Vector3d> SlotcarPlugin::get_obstacle_positions(
 void SlotcarPlugin::OnUpdate()
 {
   const auto& world = _model->GetWorld();
-
-  // After initialization once, this set will have at least one exclusion, which
-  // is the itself.
-  if (obstacle_exclusions.empty())
-    init_obstacle_exclusions();
+  if (infrastructure.empty())
+    init_infrastructure();
 
   const double time = world->SimTime().Double();
   const double dt = time - last_update_time;
