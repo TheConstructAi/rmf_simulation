@@ -1,20 +1,19 @@
 #include <gazebo/common/Plugin.hh>
+#include <gazebo/physics/Joint.hh>
 #include <gazebo/physics/Model.hh>
 #include <gazebo/physics/World.hh>
-#include <gazebo/physics/Joint.hh>
 #include <gazebo_ros/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 
-#include <rmf_building_sim_common/utils.hpp>
 #include <rmf_building_sim_common/door_common.hpp>
+#include <rmf_building_sim_common/utils.hpp>
 
 using namespace rmf_building_sim_common;
 
 namespace rmf_building_sim_gz_classic_plugins {
 //==============================================================================
 
-class DoorPlugin : public gazebo::ModelPlugin
-{
+class DoorPlugin : public gazebo::ModelPlugin {
 private:
   gazebo::event::ConnectionPtr _update_connection;
   gazebo::physics::ModelPtr _model;
@@ -25,38 +24,28 @@ private:
   bool _initialized = false;
 
 public:
-  DoorPlugin()
-  {
+  DoorPlugin() {
     // Do nothing
   }
 
-  void Load(gazebo::physics::ModelPtr model, sdf::ElementPtr sdf) override
-  {
-    const std::string& node_name = model->GetName() + "_node";
-    auto _ros_node = gazebo_ros::Node::Get(sdf, node_name);
+  void Load(gazebo::physics::ModelPtr model, sdf::ElementPtr sdf) override {
+    const std::string &node_name = model->GetName() + "_node";
+    auto _ros_node = gazebo_ros::Node::Get(sdf);
     _model = model;
 
-    RCLCPP_INFO(
-      _ros_node->get_logger(),
-      "Loading DoorPlugin for [%s]",
-      _model->GetName().c_str());
+    RCLCPP_INFO(_ros_node->get_logger(), "Loading DoorPlugin for [%s]",
+                _model->GetName().c_str());
 
-    _door_common = DoorCommon::make(
-      _model->GetName(),
-      _ros_node,
-      sdf);
+    _door_common = DoorCommon::make(_model->GetName(), _ros_node, sdf);
 
     if (!_door_common)
       return;
 
-    for (const auto& joint_name : _door_common->joint_names())
-    {
+    for (const auto &joint_name : _door_common->joint_names()) {
       const auto joint = _model->GetJoint(joint_name);
-      if (!joint)
-      {
+      if (!joint) {
         RCLCPP_ERROR(_ros_node->get_logger(),
-          " -- Model is missing the joint [%s]",
-          joint_name.c_str());
+                     " -- Model is missing the joint [%s]", joint_name.c_str());
         return;
       }
       _joints.insert(std::make_pair(joint_name, joint));
@@ -65,17 +54,14 @@ public:
     _initialized = true;
 
     _update_connection = gazebo::event::Events::ConnectWorldUpdateBegin(
-      std::bind(&DoorPlugin::on_update, this));
+        std::bind(&DoorPlugin::on_update, this));
 
-    RCLCPP_INFO(_ros_node->get_logger(),
-      "Finished loading [%s]",
-      _model->GetName().c_str());
+    RCLCPP_INFO(_ros_node->get_logger(), "Finished loading [%s]",
+                _model->GetName().c_str());
   }
 
 private:
-
-  void on_update()
-  {
+  void on_update() {
     if (!_initialized)
       return;
 
@@ -83,8 +69,7 @@ private:
 
     // Create DoorUpdateRequest
     std::vector<DoorCommon::DoorUpdateRequest> requests;
-    for (const auto& joint : _joints)
-    {
+    for (const auto &joint : _joints) {
       DoorCommon::DoorUpdateRequest request;
       request.joint_name = joint.first;
       request.position = joint.second->Position(0);
@@ -95,15 +80,13 @@ private:
     auto results = _door_common->update(t, requests);
 
     // Apply motions to the joints
-    for (const auto& result : results)
-    {
+    for (const auto &result : results) {
       const auto it = _joints.find(result.joint_name);
       assert(it != _joints.end());
       it->second->SetParam("vel", 0, result.velocity);
       it->second->SetParam("fmax", 0, result.fmax);
     }
   }
-
 };
 
 GZ_REGISTER_MODEL_PLUGIN(DoorPlugin)

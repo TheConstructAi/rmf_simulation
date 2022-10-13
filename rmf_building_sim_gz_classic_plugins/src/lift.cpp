@@ -1,20 +1,19 @@
 #include <gazebo/common/Plugin.hh>
+#include <gazebo/physics/Joint.hh>
 #include <gazebo/physics/Model.hh>
 #include <gazebo/physics/World.hh>
-#include <gazebo/physics/Joint.hh>
 #include <gazebo_ros/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 
-#include <rmf_building_sim_common/utils.hpp>
 #include <rmf_building_sim_common/lift_common.hpp>
+#include <rmf_building_sim_common/utils.hpp>
 
 using namespace rmf_building_sim_common;
 
 namespace building_sim_gazebo {
 //==============================================================================
 
-class LiftPlugin : public gazebo::ModelPlugin
-{
+class LiftPlugin : public gazebo::ModelPlugin {
 private:
   // Gazebo items
   gazebo::event::ConnectionPtr _update_connection;
@@ -27,55 +26,45 @@ private:
   bool _initialized;
 
 public:
-  LiftPlugin()
-  {
-    _initialized = false;
-  }
+  LiftPlugin() { _initialized = false; }
 
-  void Load(gazebo::physics::ModelPtr model, sdf::ElementPtr sdf) override
-  {
-    const std::string& node_name = model->GetName() + "_node";
-    _ros_node = gazebo_ros::Node::Get(sdf, node_name);
+  void Load(gazebo::physics::ModelPtr model, sdf::ElementPtr sdf) override {
+    const std::string &node_name = model->GetName() + "_node";
+    _ros_node = gazebo_ros::Node::Get(sdf);
     _model = model;
 
-    RCLCPP_INFO(_ros_node->get_logger(),
-      "Loading LiftPlugin for [%s]",
-      _model->GetName().c_str());
+    RCLCPP_INFO(_ros_node->get_logger(), "Loading LiftPlugin for [%s]",
+                _model->GetName().c_str());
 
     // load Lift object
     _lift_common = LiftCommon::make(_model->GetName(), _ros_node, sdf);
-    if (!_lift_common)
-    {
-      RCLCPP_ERROR(_ros_node->get_logger(),
-        "Failed when loading [%s]",
-        _model->GetName().c_str());
+    if (!_lift_common) {
+      RCLCPP_ERROR(_ros_node->get_logger(), "Failed when loading [%s]",
+                   _model->GetName().c_str());
       return;
     }
 
     _cabin_joint_ptr = _model->GetJoint(_lift_common->get_joint_name());
-    if (!_cabin_joint_ptr)
-    {
+    if (!_cabin_joint_ptr) {
       RCLCPP_ERROR(_ros_node->get_logger(),
-        " -- Model is missing the joint [%s]",
-        _lift_common->get_joint_name().c_str());
+                   " -- Model is missing the joint [%s]",
+                   _lift_common->get_joint_name().c_str());
       return;
     }
 
     _update_connection = gazebo::event::Events::ConnectWorldUpdateBegin(
-      std::bind(&LiftPlugin::on_update, this));
+        std::bind(&LiftPlugin::on_update, this));
 
     _cabin_joint_ptr->SetPosition(0, _lift_common->get_elevation());
 
-    RCLCPP_INFO(_ros_node->get_logger(),
-      "Finished loading [%s]",
-      _model->GetName().c_str());
+    RCLCPP_INFO(_ros_node->get_logger(), "Finished loading [%s]",
+                _model->GetName().c_str());
 
     _initialized = true;
   }
 
 private:
-  void on_update()
-  {
+  void on_update() {
     if (!_initialized)
       return;
 

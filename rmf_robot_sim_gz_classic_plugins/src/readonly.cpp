@@ -13,31 +13,30 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  *
-*/
+ */
 
 #include <gazebo/common/Plugin.hh>
-#include <gazebo/physics/World.hh>
 #include <gazebo/physics/Model.hh>
+#include <gazebo/physics/World.hh>
 #include <gazebo_ros/node.hpp>
 
-#include <rclcpp/rclcpp.hpp>
 #include <rclcpp/logger.hpp>
+#include <rclcpp/rclcpp.hpp>
 
 #include <memory>
 #include <unordered_map>
 
 #include <Eigen/Geometry>
 
-#include <rmf_fleet_msgs/msg/robot_state.hpp>
 #include <rmf_building_map_msgs/msg/building_map.hpp>
-#include <rmf_building_map_msgs/msg/level.hpp>
 #include <rmf_building_map_msgs/msg/graph.hpp>
+#include <rmf_building_map_msgs/msg/level.hpp>
+#include <rmf_fleet_msgs/msg/robot_state.hpp>
 
-#include <rmf_robot_sim_common/utils.hpp>
 #include <rmf_robot_sim_common/readonly_common.hpp>
+#include <rmf_robot_sim_common/utils.hpp>
 
-class ReadonlyPlugin : public gazebo::ModelPlugin
-{
+class ReadonlyPlugin : public gazebo::ModelPlugin {
 public:
   ReadonlyPlugin();
   void Load(gazebo::physics::ModelPtr model, sdf::ElementPtr sdf) override;
@@ -50,25 +49,23 @@ private:
 };
 
 ReadonlyPlugin::ReadonlyPlugin()
-: _readonly_common(std::make_unique<rmf_readonly_common::ReadonlyCommon>())
-{
-}
+    : _readonly_common(
+          std::make_unique<rmf_readonly_common::ReadonlyCommon>()) {}
 
-void ReadonlyPlugin::Load(gazebo::physics::ModelPtr model, sdf::ElementPtr sdf)
-{
+void ReadonlyPlugin::Load(gazebo::physics::ModelPtr model,
+                          sdf::ElementPtr sdf) {
   _model = model;
   _readonly_common->set_name(_model->GetName());
   _readonly_common->read_sdf(sdf);
-  const std::string& node_name = _model->GetName() + "_node";
-  _readonly_common->init(gazebo_ros::Node::Get(sdf, node_name));
+  const std::string &node_name = _model->GetName() + "_node";
+  _readonly_common->init(gazebo_ros::Node::Get(sdf));
 
   _update_connection = gazebo::event::Events::ConnectWorldUpdateBegin(
-    std::bind(&ReadonlyPlugin::OnUpdate, this));
+      std::bind(&ReadonlyPlugin::OnUpdate, this));
 }
 
-void ReadonlyPlugin::OnUpdate()
-{
-  const auto& world = _model->GetWorld();
+void ReadonlyPlugin::OnUpdate() {
+  const auto &world = _model->GetWorld();
   auto pose = rmf_plugins_utils::convert_pose(_model->WorldPose());
   auto sim_time = world->SimTime().Double();
   _readonly_common->on_update(pose, sim_time);
