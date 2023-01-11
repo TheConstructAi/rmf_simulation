@@ -84,22 +84,30 @@ void SlotcarPlugin::Load(gazebo::physics::ModelPtr model, sdf::ElementPtr sdf) {
   RCLCPP_INFO(dataPtr->logger(), "Initialising slotcar for %s",
               model->GetName().c_str());
 
+  RCLCPP_INFO(dataPtr->logger(), "###### Initialising slotcar LEFT WHEEL==> %s",
+              dataPtr->get_left_wheel_joint().c_str());
+  RCLCPP_INFO(dataPtr->logger(),
+              "###### Initialising slotcar RIGHT WHEEL==> %s",
+              dataPtr->get_right_wheel_joint().c_str());
+
   _update_connection = gazebo::event::Events::ConnectWorldUpdateBegin(
       std::bind(&SlotcarPlugin::OnUpdate, this));
 
-  std::string left_tire_name = model->GetName() +"/"+ "joint_tire_left";
-  std::string right_tire_name =model->GetName() +"/"+ "joint_tire_right";
+  //   std::string left_tire_name = model->GetName() +"/"+ "joint_tire_left";
+  //   std::string right_tire_name =model->GetName() +"/"+ "joint_tire_right";
+  std::string left_tire_name = dataPtr->get_left_wheel_joint();
+  std::string right_tire_name = dataPtr->get_right_wheel_joint();
 
   joints[0] = _model->GetJoint(left_tire_name);
   if (!joints[0]) {
-    RCLCPP_ERROR(dataPtr->logger(),
-                 "Could not find tire for [joint_tire_left]");
+    RCLCPP_ERROR(dataPtr->logger(), "Could not find tire for [%s]",
+                 right_tire_name.c_str());
   }
 
   joints[1] = _model->GetJoint(right_tire_name);
   if (!joints[1]) {
-    RCLCPP_ERROR(dataPtr->logger(),
-                 "Could not find tire for [joint_tire_right]");
+    RCLCPP_ERROR(dataPtr->logger(), "Could not find tire for [%s]",
+                 right_tire_name.c_str());
   }
 }
 
