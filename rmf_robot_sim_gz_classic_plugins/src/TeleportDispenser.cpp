@@ -120,54 +120,51 @@ void TeleportDispenserPlugin::fill_dispenser() {
 
     const double dist = m->WorldPose().Pos().Distance(dispenser_pos);
 
-
     RCLCPP_INFO(_dispenser_common->ros_node->get_logger(),
-    "======= item: [%s], distance=%f, nerest_dist=%f", m->GetName().c_str(), dist, nearest_dist);
+                "======= item: [%s], distance=%f, nerest_dist=%f",
+                m->GetName().c_str(), dist, nearest_dist);
 
     // We check both conditions
     bool object_close_enough = dist < nearest_dist;
-    bool object_inside_intersect_box = _dispenser_vicinity_box.Intersects(m->BoundingBox());
+    bool object_inside_intersect_box =
+        _dispenser_vicinity_box.Intersects(m->BoundingBox());
 
-    if ( object_close_enough)
-    {
-      RCLCPP_INFO(_dispenser_common->ros_node->get_logger(),"======= object_close_enough OK ");
-      if (object_inside_intersect_box){
-        RCLCPP_INFO(_dispenser_common->ros_node->get_logger(),"======= object_inside_intersect_box OK ");
+    if (object_close_enough) {
+      RCLCPP_INFO(_dispenser_common->ros_node->get_logger(),
+                  "======= object_close_enough OK ");
+      if (object_inside_intersect_box) {
+        RCLCPP_INFO(_dispenser_common->ros_node->get_logger(),
+                    "======= object_inside_intersect_box OK ");
         _item_model = m;
         nearest_dist = dist;
         _dispenser_common->dispenser_filled = true;
         _dispenser_common->item_en_found = true;
 
-      }else{
-          RCLCPP_INFO(_dispenser_common->ros_node->get_logger(),"======= object_inside_intersect_box ERROR ");
+      } else {
+        RCLCPP_INFO(_dispenser_common->ros_node->get_logger(),
+                    "======= object_inside_intersect_box ERROR ");
       }
 
-    }else{
-      RCLCPP_INFO(_dispenser_common->ros_node->get_logger(),"======= object_close_enough ERROR ");
+    } else {
+      RCLCPP_INFO(_dispenser_common->ros_node->get_logger(),
+                  "======= object_close_enough ERROR ");
     }
 
-  }// for
+  } // for
 }
 
 void TeleportDispenserPlugin::create_dispenser_bounding_box() {
 
-
-
-
   const auto dispenser_pos = _model->WorldPose().Pos();
-
 
   ignition::math::AxisAlignedBox my_bb = _model->BoundingBox();
   ignition::math::Vector3d max_corner = my_bb.Max();
   ignition::math::Vector3d min_corner = my_bb.Min();
 
-
-  ignition::math::Vector3d corner_1(min_corner.X() - 0.05,
-                                    min_corner.Y() - 0.05,
-                                    min_corner.Z() - 0.05);
-  ignition::math::Vector3d corner_2(max_corner.X() + 0.05,
-                                    max_corner.Y() + 0.05,
-                                    max_corner.Z() + 0.05);
+  ignition::math::Vector3d corner_1(min_corner.X() - 0.2, min_corner.Y() - 0.2,
+                                    min_corner.Z() - 0.2);
+  ignition::math::Vector3d corner_2(max_corner.X() + 0.2, max_corner.Y() + 0.2,
+                                    max_corner.Z() + 0.2);
 #if GAZEBO_MAJOR_VERSION <= 9
   _dispenser_vicinity_box = ignition::math::Box(corner_1, corner_2);
 #else
