@@ -108,6 +108,7 @@ public:
 
   std::string get_left_wheel_joint() const;
   std::string get_right_wheel_joint() const;
+  float get_allowed_z_map_displacement() const;
 
 private:
   // Parameters needed for power dissipation and charging calculations
@@ -281,6 +282,9 @@ private:
   /// Custom joint Names
   std::string _left_wheel_joint_name = "joint_tire_left";
   std::string _right_wheel_joint_name = "joint_tire_right";
+  // Z map Displacement value of robot frame allowed, this is to consider that
+  // the robot is in that level
+  float _allowed_z_map_displacement = 0.5;
 };
 
 template <typename SdfPtrT, typename valueT>
@@ -346,6 +350,13 @@ template <typename SdfPtrT> void SlotcarCommon::read_sdf(SdfPtrT &sdf) {
       sdf, "right_wheel_joint_name", this->_right_wheel_joint_name);
   RCLCPP_INFO(logger(), "Setting left wheel joint name to: %s",
               _right_wheel_joint_name.c_str());
+
+  get_element_val_if_present<SdfPtrT, float>(sdf, "allowed_z_map_displacement",
+                                             this->_allowed_z_map_displacement);
+  RCLCPP_INFO(
+      logger(),
+      "Setting Allowed Z displacement of robot frame respect map height: %f",
+      _allowed_z_map_displacement);
 
   get_element_val_if_present<SdfPtrT, double>(sdf, "min_turning_radius",
                                               this->_min_turning_radius);

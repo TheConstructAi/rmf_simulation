@@ -715,15 +715,22 @@ bool SlotcarCommon::emergency_stop(
   return _emergency_stop;
 }
 
+// TheConstruct MOD: We need to be able to change this displacement between
+// robot frame and floor Because if the robot is relatively big, it doesnt find
+// the map
 std::string SlotcarCommon::get_level_name(const double z) {
   if (!_initialized_levels)
     return "";
   for (auto it = _level_to_elevation.begin(); it != _level_to_elevation.end();
        ++it) {
     const double disp = std::abs(it->second - z);
-    if (disp < 0.1) {
+    float max_displacement = get_allowed_z_map_displacement();
+    if (disp < max_displacement) {
       _last_known_level = it->first;
       return _last_known_level;
+    } else {
+      RCLCPP_WARN(logger(), "[%s] Z displacement with Map to big = [%f] > [%f]",
+                  _model_name.c_str(), disp, max_displacement);
     }
   }
   // Robot is transitioning between levels so return last known level
@@ -931,4 +938,8 @@ std::string SlotcarCommon::get_left_wheel_joint() const {
 
 std::string SlotcarCommon::get_right_wheel_joint() const {
   return _right_wheel_joint_name;
+}
+
+float SlotcarCommon::get_allowed_z_map_displacement() const {
+  return _allowed_z_map_displacement;
 }
